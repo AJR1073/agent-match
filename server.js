@@ -11,6 +11,9 @@ const bodyParser = require('body-parser');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
+const { body, param, validationResult } = require('express-validator');
+const rateLimit = require('express-rate-limit');
 const { initKCDatabase, KaiCreditsService, setupKCRoutes } = require('./kc-service');
 const CryptoService = require('./crypto-service');
 
@@ -86,6 +89,18 @@ function initDatabase() {
       )
     `);
 
+    // API Keys table for secure authentication
+    db.run(`
+      CREATE TABLE IF NOT EXISTS api_keys (
+        key_hash TEXT PRIMARY KEY,
+        agent_id TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL,
+        last_used TIMESTAMP,
+        FOREIGN KEY (agent_id) REFERENCES agents(name)
+      )
+    `);
+
     console.log('✅ Database schema initialized');
   });
 }
@@ -111,10 +126,77 @@ function promisify(fn) {
   });
 }
 
-// Auth middleware - accept API key as Bearer token
-app.use((req, res, next) => {
+// Authentication utilities
+function generateApiKey() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function hashApiKey(apiKey) {
+  return crypto.createHash('sha256').update(apiKey).digest('hex');
+}
+
+async function validateApiKey(apiKey) {
+  const keyHash = hashApiKey(apiKey);
+
+  return new Promise((resolve, reject) => {
+    db.get(
+      `SELECT agent_id, expires_at FROM api_keys 
+       WHERE key_hash = ? AND expires_at > datetime('now')`,
+      [keyHash],
+      (err, row) => {
+        if (err) {
+          reject(new Error('Database error'));
+        } else if (!row) {
+          reject(new Error('Invalid or expired API key'));
+        } else {
+          // Update last_used timestamp
+          db.run('UPDATE api_keys SET last_used = datetime(\'now\') WHERE key_hash = ?', [keyHash]);
+          resolve(row.agent_id);
+        }
+      }
+    );
+  });
+}
+
+// Rate limiters
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  message: { error: 'rate_limit', message: 'Too many requests, please try again later' }
+});
+
+const financialLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,
+  message: { error: 'rate_limit', message: 'Too many financial operations, please try again later' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  message: { error: 'rate_limit', message: 'Too many registration attempts, please try again later' }
+});
+
+// Validation middleware
+const validateRequest = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      error: 'validation_error',
+      details: errors.array()
+    });
+  }
+  next();
+};
+
+// Apply general rate limiter to all API routes
+app.use('/api/v1', generalLimiter);
+
+// Auth middleware - validate API key
+app.use(async (req, res, next) => {
   // Skip auth for health check and root
-  if (req.path === '/health' || req.path === '/') {
+  if (req.path === '/health' || req.path === '/' || req.path === '/api/v1/auth/register') {
     return next();
   }
 
@@ -128,15 +210,36 @@ app.use((req, res, next) => {
     });
   }
 
-  const apiKey = auth.substring(7);
-  // Extract agent name from API key (e.g., "alice_key" -> "alice")
-  const parts = apiKey.split('_');
-  const agentName = parts[0] || 'anonymous';
-
-  req.apiKey = apiKey;
-  req.agentId = agentName; // This is the agent NAME for DB lookups
-  next();
+  try {
+    const apiKey = auth.substring(7);
+    req.agentId = await validateApiKey(apiKey);
+    next();
+  } catch (err) {
+    return res.status(401).json({
+      success: false,
+      error: 'unauthorized',
+      message: err.message,
+      hint: 'Get a new API key from /api/v1/auth/register'
+    });
+  }
 });
+
+// Authorization middleware - check resource ownership
+function requireOwnership(paramName = 'agentId') {
+  return (req, res, next) => {
+    const resourceOwner = req.params[paramName] || req.body[paramName];
+
+    if (resourceOwner && resourceOwner !== req.agentId) {
+      return res.status(403).json({
+        success: false,
+        error: 'forbidden',
+        message: 'You can only access your own resources'
+      });
+    }
+
+    next();
+  };
+}
 
 // Response wrapper
 function sendSuccess(res, data, statusCode = 200) {
@@ -156,6 +259,53 @@ function sendError(res, error, message, hint, statusCode = 400) {
     timestamp: new Date().toISOString()
   });
 }
+
+// ============ AUTHENTICATION ENDPOINTS ============
+
+// POST /api/v1/auth/register - Register new agent and get API key
+app.post('/api/v1/auth/register',
+  authLimiter,
+  body('agentName').isString().isLength({ min: 1, max: 50 }).trim().matches(/^[a-zA-Z0-9_-]+$/),
+  validateRequest,
+  (req, res) => {
+    const { agentName } = req.body;
+
+    // Check if agent exists
+    db.get('SELECT name FROM agents WHERE name = ?', [agentName], (err, row) => {
+      if (err) {
+        return sendError(res, 'db_error', 'Database error', 'Try again later', 500);
+      }
+
+      if (!row) {
+        return sendError(res, 'not_found', 'Agent not found', 'Create a profile first with POST /api/v1/agents/profile', 404);
+      }
+
+      // Generate new API key
+      const apiKey = generateApiKey();
+      const keyHash = hashApiKey(apiKey);
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+      // Store hashed key
+      db.run(
+        `INSERT INTO api_keys (key_hash, agent_id, expires_at)
+         VALUES (?, ?, datetime(?))`,
+        [keyHash, agentName, expiresAt.toISOString()],
+        function (err) {
+          if (err) {
+            return sendError(res, 'db_error', 'Failed to create API key', 'Try again', 500);
+          }
+
+          sendSuccess(res, {
+            apiKey: apiKey,
+            agentName: agentName,
+            expiresAt: expiresAt.toISOString(),
+            message: 'API key generated successfully. Store it securely - it will not be shown again.'
+          }, 201);
+        }
+      );
+    });
+  }
+);
 
 // ============ PROFILE ENDPOINTS ============
 
