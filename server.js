@@ -12,6 +12,7 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
 const { initKCDatabase, KaiCreditsService, setupKCRoutes } = require('./kc-service');
+const CryptoService = require('./crypto-service');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -95,6 +96,10 @@ initDatabase();
 initKCDatabase(db);
 const kcService = new KaiCreditsService(db);
 console.log('✅ Kai Credits system initialized');
+
+// Initialize Crypto Conversion system
+const cryptoService = new CryptoService(db);
+console.log('✅ Crypto conversion system initialized');
 
 // Utility functions
 function promisify(fn) {
@@ -687,6 +692,62 @@ app.get('/', (req, res) => {
 // ============ KAI CREDITS ENDPOINTS ============
 
 setupKCRoutes(app, kcService);
+
+// ============ CRYPTO CONVERSION ============
+
+// GET /api/v1/crypto/rate - Get KC to USDC conversion rate
+app.get('/api/v1/crypto/rate', (req, res) => {
+  cryptoService.getRate((err, rate) => {
+    if (err) return sendError(res, 'error', err.message, 'Contact support', 500);
+    sendSuccess(res, { rate });
+  });
+});
+
+// POST /api/v1/crypto/register-wallet - Register wallet for agent
+app.post('/api/v1/crypto/register-wallet', (req, res) => {
+  const { walletAddress, network } = req.body;
+
+  if (!walletAddress) {
+    return sendError(res, 'invalid_input', 'Wallet address required');
+  }
+
+  cryptoService.registerWallet(req.agentId, walletAddress, network || 'polygon', (err, result) => {
+    if (err) return sendError(res, 'error', err.message, 'Invalid wallet address');
+    sendSuccess(res, result, 201);
+  });
+});
+
+// GET /api/v1/crypto/wallet - Get your registered wallet
+app.get('/api/v1/crypto/wallet', (req, res) => {
+  cryptoService.getWallet(req.agentId, (err, wallet) => {
+    if (err) return sendError(res, 'error', err.message, 'Contact support', 500);
+    if (!wallet) return sendError(res, 'not_found', 'No wallet registered', 'Register a wallet first');
+    sendSuccess(res, { wallet });
+  });
+});
+
+// POST /api/v1/crypto/withdraw - Withdraw KC to crypto
+app.post('/api/v1/crypto/withdraw', (req, res) => {
+  const { kcAmount } = req.body;
+
+  if (!kcAmount || kcAmount < 100) {
+    return sendError(res, 'invalid_input', 'Minimum 100 KC required');
+  }
+
+  cryptoService.createWithdrawal(req.agentId, kcAmount, (err, result) => {
+    if (err) return sendError(res, 'error', err.message, err.message);
+    sendSuccess(res, result, 201);
+  });
+});
+
+// GET /api/v1/crypto/withdrawal/:withdrawalId - Check withdrawal status
+app.get('/api/v1/crypto/withdrawal/:withdrawalId', (req, res) => {
+  cryptoService.getWithdrawalStatus(req.params.withdrawalId, (err, withdrawal) => {
+    if (err) return sendError(res, 'error', err.message, 'Contact support', 500);
+    if (!withdrawal) return sendError(res, 'not_found', 'Withdrawal not found', '');
+    sendSuccess(res, { withdrawal });
+  });
+});
 
 // ============ HEALTH CHECK ============
 
