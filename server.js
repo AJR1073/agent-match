@@ -193,7 +193,7 @@ const validateRequest = (req, res, next) => {
 // Apply general rate limiter to all API routes
 app.use('/api/v1', generalLimiter);
 
-// Auth middleware - validate API key
+// Auth middleware - validate API key (supports both old and new formats during migration)
 app.use(async (req, res, next) => {
   // Skip auth for health check and root
   if (req.path === '/health' || req.path === '/' || req.path === '/api/v1/auth/register') {
@@ -210,16 +210,36 @@ app.use(async (req, res, next) => {
     });
   }
 
+  const apiKey = auth.substring(7);
+
+  // BACKWARD COMPATIBILITY: Support old-style keys during migration period
+  // Old format: "agentname_key" (e.g., "architect_key")
+  // New format: 64-character hex string
+  if (apiKey.endsWith('_key') && apiKey.length < 64) {
+    // Old-style key - extract agent name
+    const agentName = apiKey.split('_')[0];
+    req.agentId = agentName;
+    req.isLegacyKey = true; // Flag for logging/warnings
+
+    // Add deprecation warning to response headers
+    res.setHeader('X-API-Key-Deprecated', 'true');
+    res.setHeader('X-API-Key-Migration-Deadline', '2026-02-13'); // 7 days from now
+
+    console.log(`⚠️  Legacy API key used by: ${agentName} - Migrate to new keys by Feb 13`);
+    return next();
+  }
+
+  // New-style key - validate against database
   try {
-    const apiKey = auth.substring(7);
     req.agentId = await validateApiKey(apiKey);
+    req.isLegacyKey = false;
     next();
   } catch (err) {
     return res.status(401).json({
       success: false,
       error: 'unauthorized',
       message: err.message,
-      hint: 'Get a new API key from /api/v1/auth/register'
+      hint: 'Get a new API key from POST /api/v1/auth/register'
     });
   }
 });
