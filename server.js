@@ -619,7 +619,7 @@ app.get('/', (req, res) => {
     </div>
 
     <script>
-        const API = 'http://localhost:3000/api/v1';
+        const API = window.location.origin + '/api/v1';
         
         function showStatus(message, type) {
             const el = document.getElementById('status');
