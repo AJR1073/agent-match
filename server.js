@@ -195,8 +195,11 @@ app.use('/api/v1', generalLimiter);
 
 // Auth middleware - validate API key (supports both old and new formats during migration)
 app.use(async (req, res, next) => {
-  // Skip auth for health check and root
-  if (req.path === '/health' || req.path === '/' || req.path === '/api/v1/auth/register') {
+  // Skip auth for health check, root, registration, and profile creation (for new users)
+  if (req.path === '/health' ||
+    req.path === '/' ||
+    req.path === '/api/v1/auth/register' ||
+    req.path === '/api/v1/agents/profile') {
     return next();
   }
 
