@@ -235,7 +235,7 @@ class KaiCreditsService {
 // Express API Routes
 function setupKCRoutes(app, kcService) {
     // Get balance
-    app.get('/api/kc/balance/:agentId', async (req, res) => {
+    app.get('/api/v1/kc/balance/:agentId', async (req, res) => {
         try {
             const account = await kcService.getBalance(req.params.agentId);
             res.json(account);
@@ -245,7 +245,7 @@ function setupKCRoutes(app, kcService) {
     });
 
     // Transfer KC
-    app.post('/api/kc/transfer', async (req, res) => {
+    app.post('/api/v1/kc/transfer', async (req, res) => {
         try {
             const { from, to, amount, description } = req.body;
             const result = await kcService.transfer(from, to, amount, description);
@@ -256,7 +256,7 @@ function setupKCRoutes(app, kcService) {
     });
 
     // Earn KC
-    app.post('/api/kc/earn', async (req, res) => {
+    app.post('/api/v1/kc/earn', async (req, res) => {
         try {
             const { agentId, amount, category, description } = req.body;
             const result = await kcService.earn(agentId, amount, category, description);
@@ -267,7 +267,7 @@ function setupKCRoutes(app, kcService) {
     });
 
     // Get transactions
-    app.get('/api/kc/transactions/:agentId', async (req, res) => {
+    app.get('/api/v1/kc/transactions/:agentId', async (req, res) => {
         try {
             const limit = parseInt(req.query.limit) || 50;
             const transactions = await kcService.getTransactions(req.params.agentId, limit);
@@ -278,7 +278,7 @@ function setupKCRoutes(app, kcService) {
     });
 
     // List skills
-    app.get('/api/kc/marketplace/skills', async (req, res) => {
+    app.get('/api/v1/kc/marketplace/skills', async (req, res) => {
         try {
             const skills = await kcService.listSkills(req.query.category);
             res.json({ skills });
@@ -288,7 +288,7 @@ function setupKCRoutes(app, kcService) {
     });
 
     // Purchase skill
-    app.post('/api/kc/marketplace/skills/:skillId/purchase', async (req, res) => {
+    app.post('/api/v1/kc/marketplace/skills/:skillId/purchase', async (req, res) => {
         try {
             const { buyerId } = req.body;
             const result = await kcService.purchaseSkill(req.params.skillId, buyerId);
@@ -299,7 +299,7 @@ function setupKCRoutes(app, kcService) {
     });
 
     // Create account (for new agents)
-    app.post('/api/kc/account', async (req, res) => {
+    app.post('/api/v1/kc/account', async (req, res) => {
         try {
             const { agentId, agentName } = req.body;
             const account = await kcService.createAccount(agentId, agentName);
