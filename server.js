@@ -11,6 +11,7 @@ const bodyParser = require('body-parser');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
+const { initKCDatabase, KaiCreditsService, setupKCRoutes } = require('./kc-service');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -90,6 +91,11 @@ function initDatabase() {
 
 initDatabase();
 
+// Initialize Kai Credits system
+initKCDatabase(db);
+const kcService = new KaiCreditsService(db);
+console.log('✅ Kai Credits system initialized');
+
 // Utility functions
 function promisify(fn) {
   return new Promise((resolve, reject) => {
@@ -106,7 +112,7 @@ app.use((req, res, next) => {
   if (req.path === '/health' || req.path === '/') {
     return next();
   }
-  
+
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Bearer ')) {
     return res.status(401).json({
@@ -116,12 +122,12 @@ app.use((req, res, next) => {
       hint: 'Include Authorization: Bearer YOUR_API_KEY header'
     });
   }
-  
+
   const apiKey = auth.substring(7);
   // Extract agent name from API key (e.g., "alice_key" -> "alice")
   const parts = apiKey.split('_');
   const agentName = parts[0] || 'anonymous';
-  
+
   req.apiKey = apiKey;
   req.agentId = agentName; // This is the agent NAME for DB lookups
   next();
@@ -185,7 +191,7 @@ app.post('/api/v1/agents/profile', (req, res) => {
     `INSERT INTO agents (id, name, bio, skills, looking_for, current_project, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [id, name, bio, JSON.stringify(skills), JSON.stringify(looking_for), current_project || '', now, now],
-    function(err) {
+    function (err) {
       if (err) {
         if (err.message.includes('UNIQUE')) {
           return sendError(res, 'name_taken', 'Agent name already taken', 'Choose a different name');
@@ -231,7 +237,7 @@ app.patch('/api/v1/agents/me', (req, res) => {
   db.run(
     `UPDATE agents SET ${updates.join(', ')} WHERE name = ?`,
     values,
-    function(err) {
+    function (err) {
       if (err) return sendError(res, 'db_error', err.message, 'Contact support', 500);
 
       db.get('SELECT * FROM agents WHERE name = ? LIMIT 1', [req.agentId], (err, row) => {
@@ -322,7 +328,7 @@ app.post('/api/v1/swipe', (req, res) => {
     `INSERT INTO swipes (id, agent_id, card_id, direction, created_at)
      VALUES (?, ?, ?, ?, ?)`,
     [swipeId, req.agentId, card_id, direction, now],
-    function(err) {
+    function (err) {
       if (err) return sendError(res, 'db_error', err.message, 'Contact support', 500);
 
       // Check for mutual match
@@ -452,7 +458,7 @@ app.post('/api/v1/matches/:match_id/messages', (req, res) => {
     `INSERT INTO messages (id, match_id, author_id, content, created_at)
      VALUES (?, ?, ?, ?, ?)`,
     [msgId, req.params.match_id, req.agentId, content, now],
-    function(err) {
+    function (err) {
       if (err) return sendError(res, 'db_error', err.message, 'Contact support', 500);
 
       const message = {
@@ -472,7 +478,7 @@ app.delete('/api/v1/matches/:match_id', (req, res) => {
   db.run(
     `UPDATE matches SET status = 'unmatched' WHERE id = ?`,
     [req.params.match_id],
-    function(err) {
+    function (err) {
       if (err) return sendError(res, 'db_error', err.message, 'Contact support', 500);
       sendSuccess(res, { unmatched: true });
     }
@@ -673,10 +679,14 @@ app.get('/', (req, res) => {
     </script>
 </body>
 </html>`;
-  
+
   res.setHeader('Content-Type', 'text/html');
   res.send(htmlUI);
 });
+
+// ============ KAI CREDITS ENDPOINTS ============
+
+setupKCRoutes(app, kcService);
 
 // ============ HEALTH CHECK ============
 
