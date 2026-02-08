@@ -237,7 +237,8 @@ function setupKCRoutes(app, kcService) {
     // Get balance
     app.get('/api/v1/kc/balance/:agentId', async (req, res) => {
         try {
-            const account = await kcService.getBalance(req.params.agentId);
+            const agentId = req.params.agentId === 'me' ? req.agentId : req.params.agentId;
+            const account = await kcService.getBalance(agentId);
             res.json(account);
         } catch (error) {
             res.status(404).json({ error: error.message });

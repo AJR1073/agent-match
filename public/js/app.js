@@ -14,12 +14,36 @@ const app = {
                 if (success) {
                     this.showDiscovery();
                     this.updateNav(true);
+                    this.fetchBalance(); // Fetch KC balance
                 } else {
                     this.showLogin();
                 }
             });
         } else {
             this.showLogin();
+        }
+    },
+
+    async fetchBalance() {
+        try {
+            const res = await this.api('/kc/balance/me');
+            if (res) {
+                // Update UI with balance if element exists
+                const balanceEl = document.getElementById('kcBalance');
+                if (balanceEl) balanceEl.textContent = res.balance + ' KC';
+            }
+        } catch (e) {
+            console.error('KC Balance Error:', e);
+            // If account missing (404), try to create it
+            if (e.message.includes('not found') || e.message.includes('404')) {
+                try {
+                    await this.api('/kc/account', 'POST', {
+                        agentId: this.state.agent.name,
+                        agentName: this.state.agent.name
+                    });
+                    this.fetchBalance(); // Retry
+                } catch (err) { console.error('Failed to create KC account', err); }
+            }
         }
     },
 
