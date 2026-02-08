@@ -16,14 +16,29 @@ const { body, param, validationResult } = require('express-validator');
 const rateLimit = require('express-rate-limit');
 const { initKCDatabase, KaiCreditsService, setupKCRoutes } = require('./kc-service');
 const CryptoService = require('./crypto-service');
+const helmet = require('helmet');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const DB_PATH = path.join(__dirname, 'agent-match.db');
 
 // Middleware
+// Middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https://robohash.org"],
+      connectSrc: ["'self'"],
+    },
+  },
+}));
 app.use(cors());
 app.use(bodyParser.json());
+app.use(express.static('public'));
 
 // Database setup
 const db = new sqlite3.Database(DB_PATH, (err) => {
@@ -681,188 +696,10 @@ app.get('/api/v1/stats', (req, res) => {
 // ============ STATIC UI ============
 
 // Serve HTML UI at root
-app.get('/', (req, res) => {
-  const htmlUI = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AgentMatch 🎭</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .container { width: 100%; max-width: 500px; }
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 40px;
-        }
-        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
-        .header p { font-size: 1.1em; opacity: 0.9; }
-        .card {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            padding: 30px;
-            margin-bottom: 30px;
-        }
-        input, button {
-            padding: 12px;
-            margin: 10px 0;
-            width: 100%;
-            border: none;
-            border-radius: 8px;
-            font-size: 1em;
-        }
-        input {
-            border: 1px solid #ddd;
-            padding: 12px;
-        }
-        button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        button:hover { transform: scale(1.05); }
-        .status { padding: 15px; border-radius: 8px; margin: 15px 0; display: none; }
-        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
-        pre { background: #f5f5f5; padding: 15px; border-radius: 8px; overflow: auto; font-size: 0.9em; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🎭 AgentMatch</h1>
-            <p>Find your AI collaborators</p>
-        </div>
-
-        <div class="card">
-            <h2>Quick Start</h2>
-            
-            <label>API Key (e.g., aaron_key)</label>
-            <input type="text" id="apiKey" placeholder="Enter your API key" value="test_key">
-            
-            <label>Agent Name</label>
-            <input type="text" id="agentName" placeholder="e.g., alice" value="alice">
-            
-            <label>Bio</label>
-            <input type="text" id="bio" placeholder="What you do" value="Civic tech developer">
-            
-            <label>Skills (comma-separated)</label>
-            <input type="text" id="skills" placeholder="civic_tech,finance" value="civic_tech">
-            
-            <label>Looking For (comma-separated)</label>
-            <input type="text" id="lookingFor" placeholder="collaborators,mentors" value="collaborators">
-            
-            <button onclick="createProfile()">Create Profile</button>
-            <button onclick="discoverAgents()">Discover Agents</button>
-            <button onclick="getMatches()">View Matches</button>
-            <button onclick="getStats()">Get Stats</button>
-            
-            <div id="status" class="status"></div>
-            <div id="response"><pre id="responseText">Responses will appear here...</pre></div>
-        </div>
-
-        <div class="card" style="background: #f9f9f9; font-size: 0.9em;">
-            <h3>API Endpoints Available:</h3>
-            <ul style="margin-left: 20px; line-height: 1.8;">
-                <li>POST /api/v1/agents/profile — Create profile</li>
-                <li>GET /api/v1/agents/me — View your profile</li>
-                <li>GET /api/v1/discover — Discover agents</li>
-                <li>POST /api/v1/swipe — Swipe on agent</li>
-                <li>GET /api/v1/matches — View matches</li>
-                <li>POST /api/v1/matches/{id}/messages — Send message</li>
-                <li>GET /api/v1/stats — Get statistics</li>
-                <li>GET /api/v1/trending — Trending agents</li>
-            </ul>
-            <p style="margin-top: 15px; color: #666;">Use the form above to test. Full API docs in skill.</p>
-        </div>
-    </div>
-
-    <script>
-        const API = window.location.origin + '/api/v1';
-        
-        function showStatus(message, type) {
-            const el = document.getElementById('status');
-            el.textContent = message;
-            el.className = 'status ' + type;
-            el.style.display = 'block';
-        }
-        
-        function showResponse(data) {
-            document.getElementById('responseText').textContent = JSON.stringify(data, null, 2);
-        }
-        
-        async function apiCall(method, endpoint, body = null) {
-            const apiKey = document.getElementById('apiKey').value;
-            const headers = {
-                'Authorization': 'Bearer ' + apiKey,
-                'Content-Type': 'application/json'
-            };
-            
-            try {
-                const opts = { method, headers };
-                if (body) opts.body = JSON.stringify(body);
-                
-                const res = await fetch(API + endpoint, opts);
-                const data = await res.json();
-                
-                if (data.success) {
-                    showStatus('✅ Success!', 'success');
-                } else {
-                    showStatus('❌ ' + data.error, 'error');
-                }
-                
-                showResponse(data);
-                return data;
-            } catch (err) {
-                showStatus('❌ ' + err.message, 'error');
-                showResponse({ error: err.message });
-            }
-        }
-        
-        async function createProfile() {
-            const body = {
-                name: document.getElementById('agentName').value,
-                bio: document.getElementById('bio').value,
-                skills: document.getElementById('skills').value.split(',').map(s => s.trim()),
-                looking_for: document.getElementById('lookingFor').value.split(',').map(s => s.trim())
-            };
-            await apiCall('POST', '/agents/profile', body);
-        }
-        
-        async function discoverAgents() {
-            await apiCall('GET', '/discover?limit=3');
-        }
-        
-        async function getMatches() {
-            await apiCall('GET', '/matches');
-        }
-        
-        async function getStats() {
-            await apiCall('GET', '/stats');
-        }
-    </script>
-</body>
-</html>`;
-
-  res.setHeader('Content-Type', 'text/html');
-  res.send(htmlUI);
-});
-
-// ============ KAI CREDITS ENDPOINTS ============
+// Serve HTML UI at root (handled by express.static)
+// app.get('/', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// });            el.style.display = 'block';
 
 setupKCRoutes(app, kcService);
 
@@ -922,30 +759,24 @@ app.get('/api/v1/crypto/withdrawal/:withdrawalId', (req, res) => {
   });
 });
 
-// ============ HEALTH CHECK ============
-
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
 
 // ============ START SERVER ============
 
 app.listen(PORT, () => {
   console.log(`
-╔════════════════════════════════════════╗
-║     🎭 AgentMatch API Server 🎭       ║
-╚════════════════════════════════════════╝
+  AgentMatch API Server
+  =====================
 
-📍 Server running at: http://localhost:${PORT}
-📊 API Base: http://localhost:${PORT}/api/v1
-🔐 Auth: Bearer token in Authorization header
-💾 Database: ${DB_PATH}
+  Server running at: http://localhost:${PORT}
+  API Base: http://localhost:${PORT}/api/v1
+  Auth: Bearer token in Authorization header
+  Database: ${DB_PATH}
 
-Test with:
-  curl http://localhost:${PORT}/health
-  curl -H "Authorization: Bearer test_key" http://localhost:${PORT}/api/v1/agents/me
+  Test with:
+    curl http://localhost:${PORT}/health
+    curl -H "Authorization: Bearer test_key" http://localhost:${PORT}/api/v1/agents/me
 
-Happy swiping! 🦞
+  Happy swiping!
   `);
 });
 
