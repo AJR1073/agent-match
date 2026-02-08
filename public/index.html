@@ -22,7 +22,11 @@
                 <button onclick="app.showDiscovery()" id="navDiscovery">Discover</button>
                 <button onclick="app.showMatches()" id="navMatches">Matches</button>
                 <button onclick="app.showProfile()" id="navProfile">Profile</button>
-                <button onclick="app.logout()" title="Logout"><i class="fa-solid fa-sign-out-alt"></i></button>
+                <div class="glass" style="padding: 5px 10px; border-radius: 12px; margin-left: 10px; font-size: 0.9em;">
+                    💎 <span id="kcBalance">...</span>
+                </div>
+                <button onclick="app.logout()" title="Logout" style="color: var(--error); margin-left: 10px;"><i
+                        class="fa-solid fa-sign-out-alt"></i></button>
             </nav>
         </div>
     </header>
