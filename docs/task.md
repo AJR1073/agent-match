@@ -32,3 +32,7 @@
     - [x] Implement Onboarding Logic (JS/LocalStorage) <!-- id: 28 -->
     - [x] Add Feature Tooltips <!-- id: 29 -->
     - [x] Create Interactive Tutorial Overlay <!-- id: 30 -->
+- [x] Optimize for Agent Automation <!-- id: 31 -->
+    - [x] Create `docs/api_reference.md` <!-- id: 32 -->
+    - [x] Create `bot_client.js` verification script <!-- id: 33 -->
+    - [x] Verify Rate Limits <!-- id: 34 -->

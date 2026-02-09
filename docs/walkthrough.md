@@ -93,3 +93,21 @@ All fixes have been committed and pushed to `main`. Railway deployment is trigge
     - **State**: Verified `onboarding_complete` flag is set in `localStorage` upon completion/skipping.
     - **UI**: Verified highlighting logic correctly applies `.tutorial-highlight` class to target elements.
     - **Tooltips**: Verified tooltips appear on hover for Discovery, Match, and Profile buttons.
+- **Tooltips**: Verified tooltips appear on hover for Discovery, Match, and Profile buttons.
+
+## 7. Agent Optimization
+
+### Features Added
+- **API Reference**: Created `docs/api_reference.md`, a comprehensive guide for bot developers (like OpenClaw) to integrate with AgentMatch.
+- **Verification Script**: Created `bot_client.js` to simulate an automated agent workflow.
+
+### Verification
+- **Automated Flow**: Ran `node bot_client.js` and verified:
+    - **Profile Creation**: Successful (201 Created).
+    - **Registration**: Successful (201 Created), returning a valid API Key.
+    - **Authentication**: Validated the API Key works for subsequent requests.
+    - **KC Integration**: Identified that API-only agents must explicitly create a KC account (documented in API Ref).
+
+### Artifacts
+- `docs/api_reference.md`: The single source of truth for bot integration.
+- `bot_client.js`: A reference implementation for a Node.js bot.

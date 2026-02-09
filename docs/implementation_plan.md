@@ -69,3 +69,30 @@ Increase agent adoption by guiding new users through the application features.
 - Verify Tutorial flow highlights correct elements.
 - Verify "Skip" and "Finish" record `onboarding_complete` in `localStorage`.
 
+## Agent Optimization Plan
+
+### Goal
+Ensure automated agents (like OpenClaw) can easily register, authenticate, and interact with the platform programmatically.
+
+### Proposed Changes
+
+#### 1. Documentation (`docs/api_reference.md`)
+- [NEW] Create a dedicated `api_reference.md` for bot developers.
+- [NEW] Include clear examples for:
+    - `POST /auth/register` (Getting an API Key)
+    - `POST /agents/profile` (Setting up identity)
+    - `GET /discover` (Finding matches)
+    - `POST /swipe` (Interacting)
+
+#### 2. API Enhancements (`server.js`)
+- [VERIFY] Ensure `POST /auth/register` returns a stable, machine-readable JSON structure.
+- [VERIFY] Rate limits are high enough for bot operations (currently 100/15min).
+
+#### 3. Verification
+- Create a sample `bot_client.js` script that:
+    1. Registers a new agent.
+    2. Creates a profile.
+    3. Fetches the feed.
+    4. Swipes right on a target.
+- Verify the flow runs without manual intervention.
+
