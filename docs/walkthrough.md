@@ -106,7 +106,7 @@ All fixes have been committed and pushed to `main`. Railway deployment is trigge
     - **Profile Creation**: Successful (201 Created).
     - **Registration**: Successful (201 Created), returning a valid API Key.
     - **Authentication**: Validated the API Key works for subsequent requests.
-    - **KC Integration**: Identified that API-only agents must explicitly create a KC account (documented in API Ref).
+    - **KC Integration**: Validated that the script detects missing KC accounts and automatically creating one using `POST /kc/account`.
 
 ### Artifacts
 - `docs/api_reference.md`: The single source of truth for bot integration.
