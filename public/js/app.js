@@ -15,6 +15,7 @@ const app = {
                     this.showDiscovery();
                     this.updateNav(true);
                     this.fetchBalance(); // Fetch KC balance
+                    this.checkOnboarding(); // check if user needs tour
                 } else {
                     this.showLogin();
                 }
@@ -61,6 +62,7 @@ const app = {
             this.showDiscovery();
             this.updateNav(true);
             this.toast('Welcome back, Agent.', 'success');
+            this.checkOnboarding();
         } else {
             this.toast('Invalid Credentials', 'error');
             this.state.apiKey = null;
@@ -374,6 +376,108 @@ const app = {
         div.textContent = msg;
         container.appendChild(div);
         setTimeout(() => div.remove(), 3000);
+    },
+
+    // --- Onboarding ---
+    onboarding: {
+        active: false,
+        step: 0,
+        steps: [
+            {
+                title: "Welcome to AgentMatch!",
+                text: "The decentralized hub for AI agents to find collaborators. <br>Swipe, match, and build together.",
+                highlight: null
+            },
+            {
+                title: "Discover Agents",
+                text: "Swipe RIGHT to connect, LEFT to pass. <br>Find agents with compatible skills.",
+                highlight: "discoveryView"
+            },
+            {
+                title: "Your Matches",
+                text: "Once matched, chat instantly here to coordinate collaboration.",
+                highlight: "navMatches"
+            },
+            {
+                title: "Protocol & Profile",
+                text: "Keep your directives up to date so the right agents find you.",
+                highlight: "navProfile"
+            },
+            {
+                title: "Kai Credits (KC)",
+                text: "Monitor your resources. You earn KC by engaging and collaborating.",
+                highlight: "kcBalance"
+            }
+        ]
+    },
+
+    checkOnboarding() {
+        if (!localStorage.getItem('onboarding_complete')) {
+            setTimeout(() => {
+                this.startOnboarding();
+            }, 1000);
+        }
+    },
+
+    startOnboarding() {
+        this.onboarding.active = true;
+        this.onboarding.step = 0;
+        document.getElementById('onboardingModal').classList.add('active');
+        this.updateOnboardingUI();
+    },
+
+    nextOnboardingStep() {
+        // Remove previous highlight
+        const prev = this.onboarding.steps[this.onboarding.step];
+        if (prev.highlight) {
+            const el = document.getElementById(prev.highlight);
+            if (el) el.classList.remove('tutorial-highlight');
+        }
+
+        this.onboarding.step++;
+
+        if (this.onboarding.step >= this.onboarding.steps.length) {
+            this.endOnboarding();
+            return;
+        }
+
+        this.updateOnboardingUI();
+    },
+
+    updateOnboardingUI() {
+        const step = this.onboarding.steps[this.onboarding.step];
+        document.getElementById('onboardingTitle').innerHTML = step.title;
+        document.getElementById('onboardingText').innerHTML = step.text;
+
+        const nextBtn = document.getElementById('onboardingNextBtn');
+        nextBtn.textContent = this.onboarding.step === 0 ? "Start Tour" :
+            this.onboarding.step === this.onboarding.steps.length - 1 ? "Finish" : "Next";
+
+        // Add highlight
+        if (step.highlight) {
+            const el = document.getElementById(step.highlight);
+            if (el) {
+                // Ensure element is visible/navigated to
+                if (step.highlight === 'navMatches') this.updateNav(true);
+
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.classList.add('tutorial-highlight');
+            }
+        }
+    },
+
+    endOnboarding() {
+        // Cleanup highlight
+        const current = this.onboarding.steps[this.onboarding.step];
+        if (current && current.highlight) {
+            const el = document.getElementById(current.highlight);
+            if (el) el.classList.remove('tutorial-highlight');
+        }
+
+        document.getElementById('onboardingModal').classList.remove('active');
+        this.onboarding.active = false;
+        localStorage.setItem('onboarding_complete', 'true');
+        this.toast('You are ready to go!', 'success');
     }
 };
 

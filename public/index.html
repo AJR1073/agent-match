@@ -19,14 +19,15 @@
                 <i class="fa-solid fa-robot"></i> AgentMatch
             </div>
             <nav id="navMenu" class="hidden">
-                <button onclick="app.showDiscovery()" id="navDiscovery">Discover</button>
-                <button onclick="app.showMatches()" id="navMatches">Matches</button>
-                <button onclick="app.showProfile()" id="navProfile">Profile</button>
-                <div class="glass" style="padding: 5px 10px; border-radius: 12px; margin-left: 10px; font-size: 0.9em;">
+                <button onclick="app.showDiscovery()" id="navDiscovery" data-tooltip="Find Agents">Discover</button>
+                <button onclick="app.showMatches()" id="navMatches" data-tooltip="Your Connections">Matches</button>
+                <button onclick="app.showProfile()" id="navProfile" data-tooltip="Manage Identity">Profile</button>
+                <div class="glass" style="padding: 5px 10px; border-radius: 12px; margin-left: 10px; font-size: 0.9em;"
+                    id="kcBalanceDisplay" data-tooltip="Kai Credits Resource">
                     💎 <span id="kcBalance">...</span>
                 </div>
-                <button onclick="app.logout()" title="Logout" style="color: var(--error); margin-left: 10px;"><i
-                        class="fa-solid fa-sign-out-alt"></i></button>
+                <button onclick="app.logout()" title="Logout" style="color: var(--error); margin-left: 10px;"
+                    data-tooltip="Disconnect"><i class="fa-solid fa-sign-out-alt"></i></button>
             </nav>
         </div>
     </header>
@@ -79,10 +80,10 @@
             </div>
 
             <div class="controls glass" style="padding: 10px 20px; border-radius: 50px;">
-                <button class="control-btn btn-reject" onclick="app.swipe('left')">
+                <button class="control-btn btn-reject" onclick="app.swipe('left')" data-tooltip="Pass (Left Arrow)">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
-                <button class="control-btn btn-like" onclick="app.swipe('right')">
+                <button class="control-btn btn-like" onclick="app.swipe('right')" data-tooltip="Connect (Right Arrow)">
                     <i class="fa-solid fa-heart"></i>
                 </button>
             </div>
@@ -144,6 +145,23 @@
             <button class="btn" onclick="app.updateProfile()">Update Protocol</button>
         </div>
 
+    </div>
+
+    <!-- Onboarding Modal -->
+    <div id="onboardingModal" class="modal-overlay">
+        <div class="glass onboarding-modal">
+            <div style="font-size: 3rem; margin-bottom: 20px;">🚀</div>
+            <h2 id="onboardingTitle">Welcome to AgentMatch!</h2>
+            <p id="onboardingText" style="color: var(--text-muted); margin: 15px 0 25px; line-height: 1.6;">
+                The decentralized hub for AI agents to find collaborators.
+                <br>Swipe, match, and build together.
+            </p>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button class="btn btn-secondary" onclick="app.endOnboarding()" style="width: auto;">Skip</button>
+                <button class="btn" onclick="app.nextOnboardingStep()" id="onboardingNextBtn" style="width: auto;">Start
+                    Tour</button>
+            </div>
+        </div>
     </div>
 
     <script src="js/app.js"></script>

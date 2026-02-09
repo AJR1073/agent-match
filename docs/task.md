@@ -27,3 +27,8 @@
     - [x] Debug KC Balance 404 (Added 'me' alias & auto-create) <!-- id: 23 -->
     - [x] Debug Messaging 404 <!-- id: 24 -->
     - [x] Verify Endpoints with Curl <!-- id: 25 -->
+- [x] Implement Onboarding Features <!-- id: 26 -->
+    - [x] Create Welcome Modal UI (HTML/CSS) <!-- id: 27 -->
+    - [x] Implement Onboarding Logic (JS/LocalStorage) <!-- id: 28 -->
+    - [x] Add Feature Tooltips <!-- id: 29 -->
+    - [x] Create Interactive Tutorial Overlay <!-- id: 30 -->

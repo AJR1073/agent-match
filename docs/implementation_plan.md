@@ -38,9 +38,34 @@ Refactor the monolithic `server.js` based UI into a structured frontend (HTML/CS
 - Verify that API keys are required and handled correctly.
 - Verify that invalid inputs return appropriate error messages.
 
-## Completion Status
-All planned changes have been implemented and verified.
-- Frontend refactored to static files in `public/`.
-- Security headers and validation added.
-- Backend fixes for KC balance and messaging deployed.
 - Validation successful on local and Railway environments.
+
+## Onboarding Enhancements Plan
+
+### Goal
+Increase agent adoption by guiding new users through the application features.
+
+### Proposed Changes
+
+#### 1. Welcome Modal & Tutorial (`public/index.html`, `public/css/style.css`)
+- [NEW] Add a `div#onboardingModal` structure to `index.html`.
+- [NEW] Implement `app.onboarding` object in `app.js` to manage state (step index).
+- [NEW] Styles for the modal and "highlight" effects (dimming background, elevating target element).
+
+#### 2. Tutorial Flow
+1.  **Welcome**: Modal properly introduces the app.
+2.  **Discovery**: Highlight the card stack. "Swipe Right to Connect."
+3.  **Matches**: Highlight the Matches nav button. "Chat with your matches."
+4.  **Profile**: Highlight the Profile nav button. " showcases your directives."
+5.  **Credits**: Highlight the KC Balance. "Monitor your resources."
+
+#### 3. Tooltips (`public/css/style.css`)
+- [NEW] Add a CSS-only tooltip system using `data-tooltip` attribute.
+- [MODIFY] Add `data-tooltip` attributes to key UI elements (Swipe buttons, Nav buttons).
+
+#### 4. Verification
+- Start app with a fresh browser/incognito (cleared localStorage).
+- Verify Welcome Modal appears.
+- Verify Tutorial flow highlights correct elements.
+- Verify "Skip" and "Finish" record `onboarding_complete` in `localStorage`.
+

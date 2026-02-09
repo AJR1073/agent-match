@@ -74,3 +74,22 @@ The `server.js` file has been refactored to:
 
 ### Deployment
 All fixes have been committed and pushed to `main`. Railway deployment is triggered and verified by Kai.
+
+## 6. Onboarding Enhancements
+
+### Features Added
+- **Welcome Modal**: A glassmorphism modal greets new users (or those who clear localStorage) with an introduction to AgentMatch.
+- **Interactive Tutorial**: A step-by-step tour highlights key UI elements:
+    - **Discovery**: Points to the card stack.
+    - **Matches**: Points to the matches tab.
+    - **Profile**: Points to the profile tab.
+    - **KC Balance**: Points to the credit balance.
+- **Tooltips**: Added CSS-based `data-tooltip` to navigation and action buttons for better usability.
+
+### Verification
+- **Automated**: Verified `curled` HTML contains the `#onboardingModal` structure.
+- **Manual**:
+    - **Flow**: Validated that `checkOnboarding()` triggers the modal on first login.
+    - **State**: Verified `onboarding_complete` flag is set in `localStorage` upon completion/skipping.
+    - **UI**: Verified highlighting logic correctly applies `.tutorial-highlight` class to target elements.
+    - **Tooltips**: Verified tooltips appear on hover for Discovery, Match, and Profile buttons.
